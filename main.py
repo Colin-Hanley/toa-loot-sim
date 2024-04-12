@@ -1,9 +1,12 @@
 import random
 import statistics
 from math import floor
+from typing import Dict, Tuple, List
 
 
 class RewardChest:
+    """A class representing a reward chest which may contain unique or common items based on a gaming reward system."""
+
     unique_items = {
         "Osmumtens's fang": {"probability": 1 / 3.429, "reduced_rate_sub_150": False},
         "Lightbearer": {"probability": 1 / 3.429, "reduced_rate_sub_150": False},
@@ -44,89 +47,73 @@ class RewardChest:
     }
 
     def __init__(self, points: int, raid_level: int, deaths: int):
-        self._points = points
-        self.raid_level = raid_level  # Using the property setter
+        """Initialize the RewardChest with given parameters.
+
+        Args:
+            points (int): The number of points scored by the player.
+            raid_level (int): The level of the raid completed by the player.
+            deaths (int): The number of times the player died.
+
+        Raises:
+            ValueError: If the initial parameters are outside of expected ranges.
+        """
+
+        self._validate_initial_values(points, raid_level)
+        self.points = points  # Using the property setter
+        self.raid_level = raid_level
         self.deaths = deaths
         self.true_reward_points = self.calculate_true_reward_points(deaths, points)
         self.unique_items_names = list(self.unique_items.keys())
-        self.unique_item_probabilities = [self.unique_items[item]["probability"] for item in self.unique_items_names]
+        self.unique_item_probabilities = [
+            self.unique_items[item]["probability"] for item in self.unique_items_names
+        ]
         self.common_item_names = list(self.common_items.keys())
         self.common_item_weights = [1 for _ in self.common_item_names]
 
-    @staticmethod
-    def calculate_true_reward_points(deaths, points):
-        if deaths:
-            return (
-                64000
-                if points + (5000 * (0.8 ** deaths)) > 64000
-                else points + (5000 * (0.8 ** deaths))
+    def roll_loot(self) -> Tuple[Dict[str, int], str]:
+        """Simulate rolling for loot and determine if the loot is unique or common.
+
+        Returns:
+            Tuple[Dict[str, int], str]: A tuple containing the rolled items and the type of loot ('Unique' or 'Common').
+        """
+        if self._is_loot_unique():
+            return self._roll_unique_reward(), "Unique"
+        else:
+            common_items_selected = random.choices(
+                self.common_item_names, weights=self.common_item_weights, k=3
+            )
+            common_item_volumes = {
+                item: self._get_common_reward_volume(item)
+                for item in common_items_selected
+            }
+            return common_item_volumes, "Common"
+
+    def _is_loot_unique(self) -> bool:
+        """Determine if the loot from the reward chest is unique based on calculated chances.
+
+        Returns:
+            bool: True if the loot is unique, otherwise False.
+        """
+        unique_chance = self._get_unique_chance()
+        return random.random() <= unique_chance / 100
+
+    def _get_unique_chance(self) -> float:
+        """Calculate the chance of getting a unique item.
+
+        Returns:
+            float: The chance of getting a unique item as a percentage (e.g., 5.10 for 5.10%).
+        """
+        if self.raid_level >= 400:
+            unique_chance = self.points / (
+                10500 - 20 * (self.raid_level + (self.raid_level - 400) / 3)
             )
         else:
-            return points + 5000
-
-    def get_unique_chance(self):
-        """
-        Calculate the chance of getting a unique item from the reward chest
-        Returns:
-            float: The chance of getting a unique item. E.g. 5.10 for 5.10%
-        """
-
-        # If the raid level is 400 or higher, unique chance is calculated differently
-        if self._upper_raid_value:
-            unique_chance = self.points / (
-                    10500 - 20 * (self._lower_raid_value + (self._upper_raid_value / 3))
-            )
-            return round(unique_chance, 2)
-
-        unique_chance = self.points / (10500 - (20 * self._lower_raid_value))
+            unique_chance = self.points / (10500 - 20 * self.raid_level)
         return round(unique_chance, 2)
 
-    def is_loot_unique(self):
-        """
-        Determine if the loot from the reward chest is unique
-        Returns:
-            bool: True if the loot is unique, False otherwise
-        """
-        unique_chance = self.get_unique_chance()
-        if random.random() <= unique_chance / 100:
-            return True
-        return False
-
-    def roll_loot_reward(self):
-        # add a flag to rerrn a common or unique drop so it can be filtered out later
-        if self.is_loot_unique():
-            return (self.roll_unique_reward(), 'Unique')
-
-        common_items_selected = random.choices(
-            self.common_item_names,
-            weights=self.common_item_weights,
-            k=3
-        )
-        common_item_volumes = {item: self.get_common_reward_volume(item) for item in common_items_selected}
-
-        return (common_item_volumes, 'Common')
-
-    def get_common_reward_volume(self, common_item):
-        if self._lower_raid_value <= 300:
-            return floor(
-                self.true_reward_points
-                / self.common_items[common_item].get("Divisor Value")
-            )
-
-        if self._lower_raid_value > 300:
-            return floor(
-                (
-                        self.true_reward_points
-                        / self.common_items[common_item].get("Divisor Value")
-                )
-                * (1.15 + (0.01 * ((self._lower_raid_value - 300) / 5)))
-            )
-
-    def roll_unique_reward(self):
+    def _roll_unique_reward(self):
         unique_item = random.choices(
-            self.unique_items_names,
-            weights=self.unique_item_probabilities,
-            k=1
+            self.unique_items_names, weights=self.unique_item_probabilities, k=1
         )[0]
 
         if self.raid_level <= 49:
@@ -141,6 +128,44 @@ class RewardChest:
             return {"Common items": 0}
 
         return {unique_item: 1}
+
+    def _get_common_reward_volume(self, common_item: str) -> int:
+        """Calculate the volume of common reward based on the raid level and divisor values.
+
+        Args:
+            common_item (str): The common item for which volume is calculated.
+
+        Returns:
+            int: The calculated volume of the common item.
+        """
+        if self.raid_level <= 300:
+            return floor(
+                self.true_reward_points
+                / self.common_items[common_item]["Divisor Value"]
+            )
+        else:
+            adjustment_factor = 1.15 + 0.01 * ((self.raid_level - 300) / 5)
+            return floor(
+                (
+                    self.true_reward_points
+                    / self.common_items[common_item]["Divisor Value"]
+                )
+                * adjustment_factor
+            )
+
+    @staticmethod
+    def calculate_true_reward_points(deaths: int, points: int) -> int:
+        """Calculate the true reward points adjusting for deaths.
+
+        Args:
+            deaths (int): The number of deaths.
+            points (int): The starting points.
+
+        Returns:
+            int: The adjusted reward points.
+        """
+        additional_points = 5000 * (0.8**deaths) if deaths else 5000
+        return min(points + additional_points, 64000)
 
     @property
     def points(self):
@@ -175,6 +200,25 @@ class RewardChest:
             self._upper_raid_value = value - 400
             self._lower_raid_value = value - self._upper_raid_value
 
+    def _validate_initial_values(self, points: int, raid_level: int):
+        """Validate the initial points and raid level values.
+
+        Args:
+            points (int): Points to be validated.
+            raid_level (int): Raid level to be validated.
+
+        Raises:
+            ValueError: If the points or raid level are out of expected range.
+        """
+        if not (0 <= points < 64000):
+            raise ValueError(
+                "Points must be a non-negative integer and less than 64000."
+            )
+        if not (0 <= raid_level < 600):
+            raise ValueError(
+                "Raid level must be a non-negative integer and less than 600."
+            )
+
 
 if __name__ == "__main__":
 
@@ -185,8 +229,8 @@ if __name__ == "__main__":
         trial_count = 0
         while True:
             trial_count += 1
-            loot, loot_type = reward_chest.roll_loot_reward()
-            if loot_type == 'Unique' and 'Osmumtens\'s fang' in loot:
+            loot, loot_type = reward_chest.roll_loot()
+            if loot_type == "Unique" and "Osmumtens's fang" in loot:
                 trial_counts.append(trial_count)
                 break
 
