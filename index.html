@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raid Reward Simulator</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Raid Reward Simulator</h1>
+        <form id="lootForm">
+            <div class="form-group">
+                <label for="points">Points:</label>
+                <input type="number" id="points" name="points" value="23000" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="raid_level">Raid Level:</label>
+                <input type="number" id="raid_level" name="raid_level" value="350" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="deaths">Deaths:</label>
+                <input type="number" id="deaths" name="deaths" value="0" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="trials">Trials:</label>
+                <input type="number" id="trials" name="trials" value="100" class="form-control">
+            </div>
+            <button type="button" onclick="submitForm()" class="btn btn-primary">Roll Loot</button>
+        </form>
+        <div id="results" class="mt-3"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        function submitForm() {
+            var data = {
+                points: document.getElementById('points').value,
+                raid_level: document.getElementById('raid_level').value,
+                deaths: document.getElementById('deaths').value,
+                trials: document.getElementById('trials').value
+            };
+
+            fetch('/roll_loot', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            }).then(response => response.json())
+            .then(data => {
+                var results = document.getElementById('results');
+                results.innerHTML = '<h3>Unique Items</h3><pre>' + JSON.stringify(data.uniques, null, 2) + '</pre>' +
+                                    '<h3>Normal Loot</h3><pre>' + JSON.stringify(data.normal_loot, null, 2) + '</pre>';
+            }).catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>

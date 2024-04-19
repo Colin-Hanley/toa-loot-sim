@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raid Reward Results</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Raid Rewards</h1>
+        <h3>Unique Items</h3>
+        {% if uniques %}
+        <ul>
+            {% for item, quantity in uniques.items() %}
+            <li>{{ item }}: {{ quantity }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No unique items found.</p>
+        {% endif %}
+
+        <h3>Normal Loot</h3>
+        {% if normal_loot %}
+        <ul>
+            {% for item, quantity in normal_loot.items() %}
+            <li>{{ item }}: {{ quantity }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No normal loot found.</p>
+        {% endif %}
+
+        <a href="/">Try Again</a>
+    </div>
+</body>
+</html>

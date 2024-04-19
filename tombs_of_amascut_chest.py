@@ -1,7 +1,9 @@
 import random
 import statistics
 from math import floor
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Any
+
+from looting_bag import LootingBag
 
 
 class RewardChest:
@@ -58,6 +60,7 @@ class RewardChest:
             ValueError: If the initial parameters are outside of expected ranges.
         """
 
+        self.reward_rolled_count = 0
         self._validate_initial_values(points, raid_level)
         self.points = points  # Using the property setter
         self.raid_level = raid_level
@@ -70,14 +73,16 @@ class RewardChest:
         self.common_item_names = list(self.common_items.keys())
         self.common_item_weights = [1 for _ in self.common_item_names]
 
-    def roll_loot(self) -> Tuple[Dict[str, int], str]:
+    def roll_loot(self) -> dict[Any, int] | dict[str, int] | dict[str, int] | dict:
         """Simulate rolling for loot and determine if the loot is unique or common.
 
         Returns:
             Tuple[Dict[str, int], str]: A tuple containing the rolled items and the type of loot ('Unique' or 'Common').
         """
+        #add a tracker for each time this class has been called
+        self.reward_rolled_count += 1
         if self._is_loot_unique():
-            return self._roll_unique_reward(), "Unique"
+            return self._roll_unique_reward()
         else:
             common_items_selected = random.choices(
                 self.common_item_names, weights=self.common_item_weights, k=3
@@ -86,7 +91,7 @@ class RewardChest:
                 item: self._get_common_reward_volume(item)
                 for item in common_items_selected
             }
-            return common_item_volumes, "Common"
+            return common_item_volumes
 
     def _is_loot_unique(self) -> bool:
         """Determine if the loot from the reward chest is unique based on calculated chances.
@@ -173,11 +178,9 @@ class RewardChest:
 
     @points.setter
     def points(self, value: int):
-        if not isinstance(value, int) or value < 0 or value >= 64000:
-            raise ValueError(
-                "Points must be a non-negative integer and less than 59000,"
-                " as point cap is 6400 with 5k invisible starting bonus"
-            )
+        value = int(value)
+        if not isinstance(value, int):
+            raise ValueError("Points must be an integer.")
 
         self._points = value
         if value > 64000:
@@ -210,6 +213,10 @@ class RewardChest:
         Raises:
             ValueError: If the points or raid level are out of expected range.
         """
+        #if the values come in as strings, convert them to integers
+        points = int(points)
+        raid_level = int(raid_level)
+
         if not (0 <= points < 64000):
             raise ValueError(
                 "Points must be a non-negative integer and less than 64000."
@@ -221,31 +228,6 @@ class RewardChest:
 
 
 if __name__ == "__main__":
-
-    trial_counts = []
     reward_chest = RewardChest(points=23000, raid_level=350, deaths=0)
-
-    for _ in range(10000):
-        trial_count = 0
-        while True:
-            trial_count += 1
-            loot, loot_type = reward_chest.roll_loot()
-            if loot_type == "Unique" and "Osmumtens's fang" in loot:
-                trial_counts.append(trial_count)
-                break
-
-    # Calculating statistics
-    mean_count = statistics.mean(trial_counts)
-    median_count = statistics.median(trial_counts)
-    max_count = max(trial_counts)
-    min_count = min(trial_counts)
-    std_dev_count = statistics.stdev(trial_counts)
-
-    # Display results
-    print(f"Mean: {mean_count}")
-    print(f"Median: {median_count}")
-    print(f"Max: {max_count}")
-    print(f"Min: {min_count}")
-    print(f"Standard Deviation: {std_dev_count}")
-    print(f"Raid Level: {reward_chest.raid_level}")
-    print(f"Points: {reward_chest.points}")
+    looting_bag = LootingBag()
+    looting_bag.store_rewards(reward_chest.roll_loot())
